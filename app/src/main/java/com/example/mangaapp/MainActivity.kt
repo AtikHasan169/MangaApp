@@ -22,6 +22,7 @@ import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
     companion object {
+        // We will overwrite this with the REAL WebView User Agent
         var userAgent = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
         var cookies: String = ""
         var cookieMap: Map<String, String> = emptyMap()
@@ -56,6 +57,9 @@ class MainActivity : AppCompatActivity() {
         etSearch = findViewById(R.id.etSearch)
         val recyclerView = findViewById<RecyclerView>(R.id.recyclerView)
 
+        // Setup WebView FIRST to get the correct User Agent
+        setupWebView()
+
         // Load History
         loadHistory()
 
@@ -69,9 +73,6 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         }
         recyclerView.adapter = adapter
-
-        // Setup WebView for Cloudflare
-        setupWebView()
 
         // Tab Listeners
         btnTabSearch.setOnClickListener { switchTab(true) }
@@ -97,7 +98,7 @@ class MainActivity : AppCompatActivity() {
             btnTabLibrary.setTextColor(0xFF888888.toInt())
             layoutSearch.visibility = View.VISIBLE
             tvEmpty.visibility = View.GONE
-            adapter.updateList(emptyList()) // Clear list or show last search
+            adapter.updateList(emptyList()) 
         } else {
             btnTabSearch.setTextColor(0xFF888888.toInt())
             btnTabLibrary.setTextColor(0xFF00E676.toInt())
@@ -109,7 +110,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun addToHistory(manga: MangaItem) {
-        // Remove if exists to move to top
         historyList.removeAll { it.path == manga.path }
         historyList.add(0, manga)
         if (historyList.size > 50) historyList.removeAt(historyList.size - 1)
@@ -135,6 +135,10 @@ class MainActivity : AppCompatActivity() {
     private fun setupWebView() {
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
+        
+        // CRITICAL FIX: Grab the EXACT User Agent the WebView is using
+        userAgent = webView.settings.userAgentString
+        
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
@@ -146,6 +150,7 @@ class MainActivity : AppCompatActivity() {
                         k to v 
                     }
                 }
+                // Auto-hide webview if we detect we passed the check
                 if (view?.title?.contains("Just a moment") == false && cookies.contains("cf_clearance")) {
                     Toast.makeText(applicationContext, "Bypass Successful!", Toast.LENGTH_SHORT).show()
                     webView.visibility = View.GONE
@@ -160,8 +165,15 @@ class MainActivity : AppCompatActivity() {
         thread {
             try {
                 val searchUrl = "$BASE_URL/?act=search&f[keyword]=${URLEncoder.encode(query, "UTF-8")}&f[sortby]=lastest-chap&pageNum=1"
-                val doc = Jsoup.connect(searchUrl).userAgent(userAgent).cookies(cookieMap).timeout(10000).get()
                 
+                // Use the synced User Agent and Cookies
+                val doc = Jsoup.connect(searchUrl)
+                    .userAgent(userAgent)
+                    .cookies(cookieMap)
+                    .timeout(10000)
+                    .get()
+                
+                // Fixed selectFirst logic
                 val list = doc.select("div.video").mapNotNull { el ->
                     val title = el.selectFirst(".title-manga")?.text()
                     val path = el.selectFirst("a")?.attr("href")
@@ -187,7 +199,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (!isSearchTab) {
-            loadHistory() // Reload in case reading progress updated
+            loadHistory()
             adapter.updateList(historyList)
         }
     }
