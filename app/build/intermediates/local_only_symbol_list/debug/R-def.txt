@@ -1,0 +1,18 @@
+R_DEF: Internal format may change without notice
+local
+id btnBypass
+id btnSearch
+id btnTabLibrary
+id btnTabSearch
+id chapterListView
+id etSearch
+id itemImage
+id itemTitle
+id layoutSearch
+id progressBar
+id recyclerView
+id tvEmpty
+id webView
+layout activity_main
+layout activity_manga
+layout item_manga
