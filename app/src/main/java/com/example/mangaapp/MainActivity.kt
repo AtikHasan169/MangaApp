@@ -15,6 +15,8 @@ import androidx.recyclerview.widget.RecyclerView
 import org.jsoup.Jsoup
 import java.net.URLEncoder
 import kotlin.concurrent.thread
+import com.bumptech.glide.load.model.GlideUrl
+import com.bumptech.glide.load.model.LazyHeaders
 
 class MainActivity : AppCompatActivity() {
     companion object {
@@ -86,10 +88,13 @@ class MainActivity : AppCompatActivity() {
             try {
                 val searchUrl = "$BASE_URL/?act=search&f[keyword]=${URLEncoder.encode(query, "UTF-8")}&f[sortby]=lastest-chap&pageNum=1"
                 val doc = Jsoup.connect(searchUrl).userAgent(userAgent).cookies(cookieMap).timeout(10000).get()
+                
+                // FIXED: Changed selectOne -> selectFirst
                 val list = doc.select("div.video").mapNotNull { el ->
-                    val title = el.selectOne(".title-manga")?.text()
-                    val path = el.selectOne("a")?.attr("href")
-                    val img = el.selectOne("img")?.attr("src")
+                    val title = el.selectFirst(".title-manga")?.text()
+                    val path = el.selectFirst("a")?.attr("href")
+                    val img = el.selectFirst("img")?.attr("src")
+                    
                     if (title != null && path != null) {
                         MangaItem(title, path, if (img?.startsWith("/") == true) BASE_URL + img else img ?: "")
                     } else null
